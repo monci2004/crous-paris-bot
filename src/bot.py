@@ -105,6 +105,13 @@ async def check_crous_with_browser(playwright):
 # ------------------------------------------------------------------
 # BOUCLE PRINCIPALE
 # ------------------------------------------------------------------
+from datetime import datetime  # <-- S'assurer que cet import est au début du fichier !
+
+# ... (le reste de ton code reste identique) ...
+
+# ------------------------------------------------------------------
+# BOUCLE PRINCIPALE AVEC DÉLAI DYNAMIQUE
+# ------------------------------------------------------------------
 async def main():
     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_USER_IDS:
         logging.critical("Variables d'environnement manquantes dans le fichier .env !")
@@ -115,10 +122,16 @@ async def main():
     async with async_playwright() as playwright:
         while True:
             await check_crous_with_browser(playwright)
-            await asyncio.sleep(90)  # Vérification toutes les 90 secondes
-
-if __name__ == "__main__":
-    try:
-        asyncio.run(main())
-    except KeyboardInterrupt:
-        logging.info("Arrêt manuel du bot.")
+            
+            # Détermination de l'heure actuelle (heure locale)
+            current_hour = datetime.now().hour
+            
+            # De 07h00 à 21h59 (7h à 22h) -> Pause de 30 secondes
+            if 7 <= current_hour < 22:
+                sleep_time = 30
+            # De 22h00 à 06h59 (22h à 7h) -> Pause de 5 minutes (300 secondes)
+            else:
+                sleep_time = 300
+                
+            logging.info(f"Prochaine vérification dans {sleep_time} secondes...")
+            await asyncio.sleep(sleep_time)
