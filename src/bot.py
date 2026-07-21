@@ -113,6 +113,8 @@ from datetime import datetime  # <-- S'assurer que cet import est au début du f
 # BOUCLE PRINCIPALE AVEC DÉLAI DYNAMIQUE
 # ------------------------------------------------------------------
 async def main():
+    # Dans src/bot.py au début de main()
+    await send_telegram_notification("🚀 Bot CROUS démarré avec succès sur Render !")
     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_USER_IDS:
         logging.critical("Variables d'environnement manquantes dans le fichier .env !")
         return
