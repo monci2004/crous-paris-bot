@@ -2,6 +2,7 @@ import os
 import re
 import asyncio
 import logging
+from datetime import datetime
 from dotenv import load_dotenv
 from telegram import Bot
 from playwright.async_api import async_playwright
@@ -21,7 +22,7 @@ TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 raw_user_ids = os.getenv("TELEGRAM_USER_IDS", "")
 TELEGRAM_USER_IDS = [uid.strip() for uid in raw_user_ids.split(",") if uid.strip()]
 
-bot = Bot(token=TELEGRAM_BOT_TOKEN)
+bot = Bot(token=TELEGRAM_BOT_TOKEN) if TELEGRAM_BOT_TOKEN else None
 
 known_logement_ids = set()
 is_first_run = True
@@ -30,6 +31,10 @@ is_first_run = True
 # NOTIFICATIONS TELEGRAM
 # ------------------------------------------------------------------
 async def notify_users(message: str):
+    if not bot:
+        logging.error("Impossible d'envoyer la notification : Token Telegram absent.")
+        return
+
     for user_id in TELEGRAM_USER_IDS:
         try:
             await bot.send_message(
@@ -78,7 +83,6 @@ async def check_crous_with_browser(playwright):
             known_logement_ids = found_ids
             is_first_run = False
             logging.info("✅ Bot initialisé avec succès ! Surveillance active sur Telegram.")
-            await browser.close()
             return
 
         # Nouveaux logements
@@ -103,21 +107,15 @@ async def check_crous_with_browser(playwright):
         await browser.close()
 
 # ------------------------------------------------------------------
-# BOUCLE PRINCIPALE
-# ------------------------------------------------------------------
-from datetime import datetime  # <-- S'assurer que cet import est au début du fichier !
-
-# ... (le reste de ton code reste identique) ...
-
-# ------------------------------------------------------------------
 # BOUCLE PRINCIPALE AVEC DÉLAI DYNAMIQUE
 # ------------------------------------------------------------------
 async def main():
-    # Dans src/bot.py au début de main()
-    await send_telegram_notification("🚀 Bot CROUS démarré avec succès sur Render !")
     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_USER_IDS:
         logging.critical("Variables d'environnement manquantes dans le fichier .env !")
         return
+
+    # Notification de succès au démarrage
+    await notify_users("🚀 Bot CROUS démarré avec succès sur Render !")
 
     logging.info(f"Lancement du Bot Surveillance CROUS avec Playwright (Destinataires : {len(TELEGRAM_USER_IDS)})")
 
@@ -125,7 +123,7 @@ async def main():
         while True:
             await check_crous_with_browser(playwright)
             
-            # Détermination de l'heure actuelle (heure locale)
+            # Détermination de l'heure actuelle
             current_hour = datetime.now().hour
             
             # De 07h00 à 21h59 (7h à 22h) -> Pause de 30 secondes
@@ -137,3 +135,7 @@ async def main():
                 
             logging.info(f"Prochaine vérification dans {sleep_time} secondes...")
             await asyncio.sleep(sleep_time)
+
+# Point d'entrée obligatoire pour exécuter le script
+if __name__ == "__main__":
+    asyncio.run(main())
