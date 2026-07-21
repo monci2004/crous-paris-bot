@@ -6,6 +6,8 @@ from datetime import datetime
 from dotenv import load_dotenv
 from telegram import Bot
 from playwright.async_api import async_playwright
+import threading
+from http.server import HTTPServer, BaseHTTPRequestHandler
 
 # ------------------------------------------------------------------
 # CONFIGURATION ET LOGS
@@ -107,13 +109,32 @@ async def check_crous_with_browser(playwright):
         await browser.close()
 
 # ------------------------------------------------------------------
+# MINI SERVEUR HTTP POUR KEEP-ALIVE SUR RENDER
+# ------------------------------------------------------------------
+class HealthCheckHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"Bot CROUS is running!")
+
+def start_health_check_server():
+    port = int(os.getenv("PORT", 8080))
+    server = HTTPServer(("0.0.0.0", port), HealthCheckHandler)
+    logging.info(f"Serveur Web de santé démarré sur le port {port}")
+    server.serve_forever()
+
+# ------------------------------------------------------------------
 # BOUCLE PRINCIPALE AVEC DÉLAI DYNAMIQUE
 # ------------------------------------------------------------------
 async def main():
+    # Lancement du serveur Web dans un thread séparé pour Render
+    threading.Thread(target=start_health_check_server, daemon=True).start()
+
     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_USER_IDS:
         logging.critical("Variables d'environnement manquantes dans le fichier .env !")
         return
-
+    
+    # ... le reste de ton code main() ...
     # Notification de succès au démarrage
     await notify_users("🚀 Bot CROUS démarré avec succès sur Render !")
 
